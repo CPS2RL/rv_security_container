@@ -1,0 +1,149 @@
+//Barometer execution source code
+#include <AP_Baro/AP_Baro.h>
+#include <AP_BoardConfig/AP_BoardConfig.h>
+#include <AP_HAL/AP_HAL.h>
+#include <GCS_MAVLink/GCS_Dummy.h>
+#include <AP_ExternalAHRS/AP_ExternalAHRS.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+
+const AP_HAL::HAL &hal = AP_HAL::get_HAL();
+
+// create barometer object
+static AP_Baro barometer;
+#if HAL_EXTERNAL_AHRS_ENABLED
+ static AP_ExternalAHRS eAHRS;
+#endif // HAL_EXTERNAL_AHRS_ENABLED
+
+static uint32_t timer;
+static uint8_t counter;
+static AP_BoardConfig board_config;
+
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
+#include <SITL/SITL.h>
+SITL::SIM sitl;
+#endif
+
+struct timespec diff(timespec start, timespec end)
+{
+        timespec temp;
+        if ((end.tv_nsec-start.tv_nsec)<0) {
+                temp.tv_sec = end.tv_sec-start.tv_sec-1;
+                temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
+        } else {
+                temp.tv_sec = end.tv_sec-start.tv_sec;
+                temp.tv_nsec = end.tv_nsec-start.tv_nsec;
+        }
+        return temp;
+
+}
+
+void setup();
+void loop();
+
+// to be called only once on boot for initializing objects
+void setup()
+{
+    hal.console->printf("Barometer library test\n");
+
+    board_config.init();
+
+
+    hal.scheduler->delay(1000);
+
+
+    // initialize the barometer
+    barometer.init();
+    barometer.calibrate();
+
+    // set up timer to count time in microseconds
+    timer = AP_HAL::micros();
+
+
+}
+// loop
+void loop()
+{
+for(int i = 0; i <= 100; i++){
+    // terminate program if console fails to initialize
+    if (!hal.console->is_initialized()) {
+        return;
+    }
+
+    // run accumulate() at 50Hz and update() at 10Hz
+    if ((AP_HAL::micros() - timer) > 20 * 1000UL) {
+        timer = AP_HAL::micros();
+        barometer.accumulate();
+        if (counter++ < 5) {
+            return;
+        }
+        counter = 0;
+        barometer.update();
+
+        //calculate time taken for barometer readings to update
+//        uint32_t read_time = AP_HAL::micros() - timer;
+//        if (!barometer.healthy()) {
+//            hal.console->printf("not healthy\n");
+ //           return;
+//        }
+
+        //output barometer readings to console
+
+struct timespec time1, time2;
+//        int temp;
+        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
+
+//        hal.console->printf(" Pressure: %.2f Pa\n"
+//                            " Temperature: %.2f degC\n"
+//                            " Relative Altitude: %.2f m\n"
+//                            " climb=%.2f m/s\n"
+//                            " Read + update time: %u usec\n"
+//                            "\n",
+                            (double)barometer.get_pressure(),
+                            (double)barometer.get_temperature(),
+                            (double)barometer.get_altitude();
+clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
+        //printf("&d\n",diff(time1,time2).tv_sec);
+        printf("%ld\n",diff(time1,time2).tv_nsec);
+
+//                          (double)barometer.get_climb_rate(),
+//                            (unsigned)read_time);
+    } else {
+        // if stipulated time has not passed between two distinct readings, delay the program for a mil$
+        hal.scheduler->delay(1);
+    }
+
+}
+}
+const struct AP_Param::GroupInfo        GCS_MAVLINK_Parameters::var_info[] = {
+    AP_GROUPEND
+};
+GCS_Dummy _gcs;
+
+
+AP_HAL_MAIN();
+
+//Code is insertered into Barometer application to measure memory usage
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/resource.h>
+#include <unistd.h>
+long get_mem_usage(){
+  struct rusage myusage;
+
+  getrusage(RUSAGE_SELF, &myusage);
+  return myusage.ru_maxrss;
+
+}
+long baseline = get_mem_usage();
+printf("usage: %ld + %ld\n",baseline, get_mem_usage()-baseline);
+
+//Code was insertted into AP_Logger.cpp file to allocate continous memory
+while(true){
+int p = new int[40000000];
+*p = 10;
+}
