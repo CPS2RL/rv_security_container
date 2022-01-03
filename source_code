@@ -147,3 +147,29 @@ while(true){
 int p = new int[40000000];
 *p = 10;
 }
+
+//Code used to produce graphs in research paper in python
+import matplotlib.pyplot as plt
+
+y = [
+#insert y values    
+]
+
+x = [
+#insert x values
+]
+
+plt.plot(x, y)
+ 
+# naming the x axis
+plt.xlabel('X-axis')
+# naming the y axis
+plt.ylabel('Y-axis')
+ 
+# giving a title to my graph
+plt.title('Title of Graph')
+ 
+# function to show the plot
+plt.show()
+
+
